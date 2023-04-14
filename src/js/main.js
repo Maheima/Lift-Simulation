@@ -4,9 +4,12 @@ const removeFloorBtn = document.querySelector('.remove_floor');
 const addFloorBtn = document.querySelector('.add_floor');
 const downArrow = document.querySelector('.down');
 const generatedFloors = document.querySelector('.main').childNodes;
+const groundFloorUpBtn = document.querySelector('.ground-up');
+const groundFloorDownBtn = document.querySelector('.ground-down');
 
 let numberOfLifts = 1;
 let numberOfFloors = 1;
+let liftsReqQueue = [];
 
 removeLiftBtn.addEventListener('click', () => {
   if (numberOfLifts == 1) return;
@@ -38,29 +41,33 @@ addLiftBtn.addEventListener('click', () => {
 });
 
 const main = document.querySelector('.main');
-function doorsAnimation(liftDoorsArr, floorNum, movingLift) {
+
+function doorsAnimation(liftDoorsArr, floorNum, movingLift, previousPosition) {
+  let doorOpeningDuration = Math.abs(
+    Number(previousPosition) - Number(floorNum)
+  );
+
   setTimeout(() => {
-    // movingLift.childNodes
     liftDoorsArr[0].style.width = `0`;
     liftDoorsArr[0].style.transition = `all ease-in-out 2.5s`;
     liftDoorsArr[1].style.width = `0`;
     liftDoorsArr[1].style.transition = `all ease-in-out 2.5s`;
-
-    // console.log('movingLift.childNodes', )
-  }, 1000 * floorNum * 2);
+  }, 1000 * doorOpeningDuration * 2);
 
   setTimeout(() => {
     liftDoorsArr[0].style.width = `25px`;
     liftDoorsArr[0].style.transition = `all ease-in-out 2.5s`;
     liftDoorsArr[1].style.width = `25px`;
     liftDoorsArr[1].style.transition = `all ease-in-out 2.5s`;
-    // console.log('doors started closing in ', 2500 * floorNum * 2, 'ms');
-  }, 1000 * floorNum * 2 + 2500);
+  }, 1000 * doorOpeningDuration * 2 + 2500);
 
   setTimeout(() => {
     movingLift.setAttribute('data-state', 'free');
-    // console.log('free lift in ', 6000 * floorNum * 2, 'ms');
-  }, 1000 * floorNum * 2 + 5000);
+    if (liftsReqQueue.length !== 0) {
+      moveLiftTo(liftsReqQueue[0]);
+    }
+    liftsReqQueue.shift();
+  }, 1000 * doorOpeningDuration * 2 + 5000);
 }
 
 function checkForExistingLift(liftsArr, floorNum) {
@@ -78,23 +85,29 @@ const moveLiftTo = (floorNum) => {
   const existingLift = checkForExistingLift(liftsArr, floorNum);
   if (existingLift) {
     let existingLiftDoorsArr = existingLift.querySelectorAll('.door');
-    doorsAnimation(existingLiftDoorsArr, floorNum, existingLift);
+    doorsAnimation(existingLiftDoorsArr, floorNum, existingLift, floorNum);
   } else {
     const freeLiftsArr = liftsArr.filter(
       (lift) => lift.dataset.state === 'free'
     );
-    /* Logic for sorting the freed lifts will go here */
-    // const sortedFreeLifts = getSortedFreeLifts(freeLiftsArr, floorNum);
-    // const movingLift = sortedFreeLifts[0];
 
+    if (freeLiftsArr.length === 0) {
+      liftsReqQueue.push(Number(floorNum));
+    }
+
+    let previousPosition;
     const movingLift = freeLiftsArr[0];
+    
     movingLift.setAttribute('data-state', 'busy');
     let distance = floorNum * 110;
     movingLift.style.transform = `translateY(-${distance + floorNum * 2}px)`;
-    movingLift.style.transition = `transform 2s ease-in`;
-    movingLift.setAttribute('data-pos', floorNum);
+    let currentPosLift = movingLift.dataset.pos;
+    let liftSpeed = 2 * Math.abs(Number(floorNum) - Number(currentPosLift));
+    movingLift.style.transition = `transform ${liftSpeed}s ease-in`;
+    previousPosition = currentPosLift;
     let liftDoorsArr = movingLift.querySelectorAll('.door');
-    doorsAnimation(liftDoorsArr, floorNum, movingLift);
+    doorsAnimation(liftDoorsArr, floorNum, movingLift, previousPosition);
+    movingLift.setAttribute('data-pos', floorNum);
   }
 };
 
@@ -106,7 +119,7 @@ addFloorBtn.addEventListener('click', () => {
   newFloor.innerHTML = `<div class="arrow_container">
   <i class="fa-solid fa-circle-chevron-up fa-2xl up"></i>
   <i class="fa-solid fa-circle-chevron-down fa-2xl down"></i>
-</div>`;
+  </div>`;
   let floorReqNum = newFloor.getAttribute('data-floorNum');
   const singleUpArrowBtn = document.querySelector('.up');
   const singleDownArrowBtn = document.querySelector('.down');
@@ -127,6 +140,13 @@ removeFloorBtn.addEventListener('click', () => {
   numberOfFloors--;
 });
 
+groundFloorUpBtn.addEventListener('click', () => moveLiftTo(0));
+groundFloorDownBtn.addEventListener('click', () => moveLiftTo(0));
+
 // const lifts2 = lifts.querySelectorAll('.lift');
 // const liftsArr = Array.from(lifts2);
 // console.log('liftsArr,lifts2', liftsArr,lifts2);
+
+/* Logic for sorting the freed lifts will go here */
+// const sortedFreeLifts = getSortedFreeLifts(freeLiftsArr, floorNum);
+// const movingLift = sortedFreeLifts[0];
